@@ -1,0 +1,130 @@
+console.clear();
+
+gsap.registerPlugin(Draggable);
+
+let bgCanvas, bgCanvasCtx, raf, slider, sliderHandle, sliderHandleProps;
+let modes = ["light", "dark"];
+let activeMode = modes[0];
+let currentMode;
+
+function initDragEvent() {
+	slider = document.querySelector(".slider");
+	sliderHandle = slider.querySelector(".handle");
+	const sliderDrop = slider.querySelector(".drop");
+
+	sliderHandleProps = {
+		radius: sliderHandle.getBoundingClientRect().width / 2,
+		radiusOffset: 0,
+		position: {
+			x: sliderHandle.getBoundingClientRect().left,
+			y: sliderHandle.getBoundingClientRect().top
+		}
+	};
+
+	gsap.set(sliderHandle, {
+		x: 0
+	});
+
+	let tl = gsap.timeline({
+		onComplete: () => {
+			if (activeMode != currentMode) {
+				toggleColor();
+				currentMode = activeMode;
+			}
+		}
+	});
+
+	Draggable.create(sliderHandle, {
+		type: "x",
+		bounds: slider,
+		onRelease(e) {
+			if (!this.hitTest(sliderDrop)) {
+				activeMode = modes[0];
+				tl.to(sliderHandle, {
+					x: 0,
+					duration: 0.6,
+					ease: "elastic.out(1, .75)"
+				});
+			} else {
+				activeMode = modes[1];
+				tl.to(sliderHandle, {
+					x: sliderDrop.offsetLeft - 5,
+					duration: 0.6,
+					ease: "elastic.out(1, .8)"
+				});
+			}
+		}
+	});
+
+	function toggleColor() {
+		gsap.set(sliderHandle, { pointerEvents: "none" });
+		let date = Date.now();
+		gsap
+			.timeline()
+			.to(sliderHandleProps, {
+				duration: window.innerWidth / 1500,
+				radiusOffset: window.innerWidth * 1.2
+			})
+			.to(
+				"body",
+				{
+					duration: 0.15,
+					"--handle-background": activeMode === "dark" ? "#f4f4f4" : "#2b2b2b"
+				},
+				`-=0.${window.innerWidth / 1500}`
+			)
+
+			.set("body", {
+				backgroundColor: activeMode === "dark" ? "#2b2b2b" : "#f4f4f4"
+			})
+			.set(sliderHandleProps, { radiusOffset: 0 })
+			.set(sliderHandle, { pointerEvents: "all" });
+	}
+}
+
+function initCanvas() {
+	bgCanvas = document.getElementById("bgCanvas");
+	bgCanvasCtx = bgCanvas.getContext("2d");
+	bgCanvas.width = window.innerWidth;
+	bgCanvas.height = window.innerHeight;
+	animate();
+}
+
+function animate() {
+	bgCanvasCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+
+	sliderHandleProps.radius = sliderHandle.getBoundingClientRect().width / 2;
+	sliderHandleProps.position = {
+		x: sliderHandle.getBoundingClientRect().left,
+		y: sliderHandle.getBoundingClientRect().top
+	};
+
+	drawCircle();
+
+	raf = requestAnimationFrame(animate);
+}
+
+function drawCircle() {
+	let ctx = bgCanvasCtx;
+	let position = sliderHandleProps.position;
+	let radius = sliderHandleProps.radius;
+	ctx.beginPath();
+	ctx.arc(
+		position.x + radius,
+		position.y + radius,
+		radius / 2 + sliderHandleProps.radiusOffset,
+		0,
+		2 * Math.PI,
+		false
+	);
+	ctx.fillStyle = activeMode === "dark" ? "#2b2b2b" : "#f4f4f4";
+	ctx.fill();
+	ctx.closePath();
+}
+
+initDragEvent();
+initCanvas();
+
+window.addEventListener("resize", () => {
+	initCanvas();
+});
